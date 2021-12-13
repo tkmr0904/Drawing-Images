@@ -24,11 +24,6 @@ class Vec
         for(int i=0; i<dimension; ++i)
             a[i] = 0;
     }
-    constexpr Vec(double* r)
-    {
-        for(int i=0; i<dimension; ++i)
-            a[i] = r[i];
-    }
     constexpr double length() const
     {   
         double sum = 0;
@@ -65,7 +60,16 @@ constexpr void operator /=(Vec<n>& l, double const& r)
 
 template<int n>
 constexpr Vec<n> Vec<n>::normalize()
-{   *this /= this->length();    return *this;}
+{   *this /= this->length();  return *this;}
+
+template<int n>
+constexpr Vec<n> operator + (Vec<n> const& l, Vec<n> const& r)
+{   
+    Vec<n> ret;
+    for(int i=0; i<l.dimension; i++)
+        ret.a[i] = l.a[i] + r.a[i];
+    return ret;
+}
 
 template<int n>
 constexpr Vec<n> operator - (Vec<n> const& l, Vec<n> const& r)
@@ -103,39 +107,64 @@ template<int n>
 std::istream& operator>>(std::istream& l, Vec<n>& r)
 {
     for(int i=0; i<r.dimension; i++)
-        std::cin >> r.a[i];
+        std::cin >> r.a[i]; 
     return l;
 }
+
 
 
 class Vec2 : public Vec<2>
 {
     public:
-    double& x = a[0],  y = a[1]; 
+    double& x = a[0];
+    double& y = a[1]; 
 
-    Vec2(){}
-    constexpr Vec2(double const& x_, double const& y_)
+    Vec2() : Vec<2>(){}
+    Vec2(double const& x_, double const& y_)
     {
-        x = x_;
-        y = y_;
+        a[0] = x_;
+        a[1] = y_;
     }
 
-    constexpr Vec2(Vec<2> const& v)
+
+    Vec2(Vec<2> const& v)
     {
-        x = v.a[0];
-        y = v.a[1];
+        a[0] = v.a[0];
+        a[1] = v.a[1];
     }
-    
-    constexpr Vec2& operator=(const Vec<2> & r)
+
+
+    Vec2(Vec2 const& v)
     {
-        x = r.a[0];   y = r.a[1];
+        a[0] = v.a[0];
+        a[1] = v.a[1];
+    }
+
+
+    Vec2& operator=(Vec<2> const& r)
+    {
+        a[0] = r.a[0];
+        a[1] = r.a[1];
         return *this;
     }
 
-    constexpr Vec2& operator=(const Vec2 & r)
+    Vec2& operator=(Vec2 const& r)
     {
-        x = r.a[0];   y = r.a[1];
+        a[0] = r.a[0];
+        a[1] = r.a[1];
         return *this;
+    }
+
+    Vec2(Vec2&& v)
+    {
+        a[0] = v.a[0];
+        a[1] = v.a[1];
+    }
+
+    Vec2(Vec<2> && v)
+    {
+        a[0] = v.a[0];
+        a[1] = v.a[1];
     }
 };
 
@@ -288,7 +317,8 @@ T input(std::string info)
         /*正常に入力されれば*/
         if(std::cin.good() == true)
         {  
-            std::cout << variable << "が入力されました。よろしければ5秒以内にEnterを入力してください。";
+            int static constexpr limit = 5; /*制限時間(秒)*/
+            std::cout << variable << "が入力されました。よろしければ" << limit << "秒以内にEnterを入力してください。";
 
             time_t t0, t;   /*時刻を格納する変数*/
             time(&t0);      /*初期時刻*/
@@ -296,7 +326,6 @@ T input(std::string info)
             std::cin.get(); /*何か入力されるのを待つ*/
             time(&t);       /*入力された時刻*/
 
-            int static constexpr limit = 5; /*制限時間*/
 
             /*制限時間以内に入力されていれば*/
             if(t-t0 < limit)
@@ -492,18 +521,18 @@ class Uniform : public Pattern
 };
 
 /*Patternから継承*/  //画像上の座標(i, j)から縞模様を求める処理を実装 
-class Sima : public Pattern
+class Stripe : public Pattern
 {
     public:
-    int const simahaba;
+    int const stripe_width;
 
-    Sima(Image& image_, int simahaba_) : Pattern(image_), simahaba(simahaba_){}
-    Sima(Image& image_): Sima(image_, input<int>("縞幅を入力してください。")){}
+    Stripe(Image& image_, int stripe_width_) : Pattern(image_), stripe_width(stripe_width_){}
+    Stripe(Image& image_): Stripe(image_, input<int>("縞幅を入力してください。")){}
 
     RGB whatcolor(int const& i, int const& j) const
     {
         /*割り算の余りで縞模様を計算*/
-        if((i/simahaba)%2 == 0)   
+        if((i/stripe_width)%2 == 0)   
             return {(char)255,(char)255,(char)255};
         else
             return {0,0,0};
@@ -520,9 +549,9 @@ class Sima : public Pattern
 class Wave : public Pattern
 {
     public:
-    RGB const color;         //波の色
-    double const wavelength; //波長
-    Vec2 const direction;    //波の方向を向いた単位ベクトル
+    RGB color;         //波の色
+    double wavelength; //波長
+    Vec2 direction;    //波の方向を向いた単位ベクトル
 
     Wave(Image& image_, RGB color_, int wavelength_, Vec2 direction_): Pattern(image_), color(color_), wavelength(wavelength_), direction(direction_.normalize()){}
     Wave(Image& image_): Wave(image_, input<RGB>("RGBを空白区切りで入力してください。(0~255)"), input<double>("波長を入力してください。"), input<Vec2>("波の方向を入力してください(空白区切りで)")){}
@@ -544,7 +573,9 @@ class Wave : public Pattern
 
     void changesetting()
     {
-        //何もしない
+        color = input<RGB>("RGBを空白区切りで入力してください。(0~255)");
+        wavelength = input<double>("波長を入力してください。");
+        direction = input<Vec2>("波の方向を入力してください(空白区切りで)").normalize();
     }
 };
 
@@ -678,10 +709,14 @@ class CircWave : public Pattern
 /*Patternから継承したが、まだ抽象クラス*/  //画像上の座標(i, j)から極座標の座標値を求める処理を実装 
 class Polar : public Pattern
 {
-    protected:
+    public:
+    Vec2 const center;
+    Polar(Image& image_, Vec2 const& center_): Pattern(image_), center(center_){}
+    Polar(Image& image_): Polar(image_, input<Vec2>("中心座標を空白区切りで入力してください")){}
 
+    protected:
     /*x軸と動径方向のなす角(0から2piの範囲)と距離を求める */
-    constexpr void get_angle_distance(double& r, double& theta, int const& i, int const& j) const
+    void get_angle_distance(double& r, double& theta, int const& i, int const& j) const
     {
         /*v: 動径方向のベクトル*/
         Vec2 v = Vec2(i-center.x, center.y-j);
@@ -701,11 +736,6 @@ class Polar : public Pattern
         }
     }
 
-    public:
-    Vec2 const center;
-    Polar(Image& image_, Vec2 const& center_): Pattern(image_), center(center_){}
-    Polar(Image& image_): Polar(image_, input<Vec2>("中心座標を空白区切りで入力してください")){}
-
     void changesetting()
     {
         //何もしない
@@ -716,9 +746,9 @@ class Polar : public Pattern
 class GuruGuru_normal : public Polar
 {
     public:
-    int const simahaba;
+    int const stripe_width;
 
-    GuruGuru_normal(Image& image_, Vec2 const& center_, int const& simahaba_): Polar(image_, center_), simahaba(simahaba_){}
+    GuruGuru_normal(Image& image_, Vec2 const& center_, int const& stripe_width_): Polar(image_, center_), stripe_width(stripe_width_){}
     GuruGuru_normal(Image& image_): GuruGuru_normal(image_, input<Vec2>("中心座標を空白区切りで入力してください"), input<int>("縞幅を入力してください")){}
     
 
@@ -729,7 +759,7 @@ class GuruGuru_normal : public Polar
         get_angle_distance(r, theta, i, j);
 
         /*渦を生成する処理*/
-        if((int)(r/simahaba + theta/M_PI)%2 == 0)
+        if((int)(r/stripe_width + theta/M_PI)%2 == 0)
             return {(char)255, (char)255, (char)255};
         else
             return {0, 0, 0};
@@ -740,9 +770,9 @@ class GuruGuru_normal : public Polar
 class GuruGuru_EX : public Polar
 {
     public:
-    int const simahaba;
+    int const stripe_width;
 
-    GuruGuru_EX(Image& image_, Vec2 const& center_, int simahaba_): Polar(image_, center_), simahaba(simahaba_){}
+    GuruGuru_EX(Image& image_, Vec2 const& center_, int stripe_width_): Polar(image_, center_), stripe_width(stripe_width_){}
     GuruGuru_EX(Image& image_): GuruGuru_EX(image_, input<Vec2>("中心座標を空白区切りで入力してください"), input<int>("渦の幅を入力してください")){}    
 
     RGB whatcolor(int const& i, int const& j) const
@@ -753,7 +783,7 @@ class GuruGuru_EX : public Polar
 
         bool f1, f2;
 
-        if((int)(r/simahaba+10-(theta/M_PI*5 ))%2 == 0)
+        if((int)(r/stripe_width+10-(theta/M_PI*5 ))%2 == 0)
             f1=1;
         else
             f1=0;
@@ -787,7 +817,7 @@ class Polar_rainbow : public Polar
         get_angle_distance(r, theta, i, j);
 
         static Rainbow rainbow;
-        return rainbow[(int)theta/2/M_PI*255];
+        return rainbow[(int)(255*theta/2/M_PI)];
     }
 };
 
@@ -795,50 +825,29 @@ class Polar_rainbow : public Polar
 class MJ : public Pattern
 {
     protected:
+    /*画像を複素数平面に置いたとき、横幅の長さはいくらか？*/
     double length;
-    Vec2 centorpos;
+
+    /*画像を複素数平面に置いたとき、中心部分はどこに来るか*/
+    Complex centerpos;
+
+    /*発散判定の回数*/
+    int max_depth;
+
     double r;
-    int samples;
-    MJ(Image& image_): Pattern(image_)
+    MJ(Image& image_): Pattern(image_), length(input<double>("画像を複素数平面に置いたとき、横幅の長さはいくらかを入力してください。")), centerpos(input<Complex>("画像を複素数平面に置いたとき、中心部分はどこに来るかを入力してください。")), max_depth(input<int>("最大深度を入力してくさだい。")), r(input<double>("カラー表示の比率を何倍にしたいか入力してください。"))
+    {}
+
+    /*画素の座標を複素平面上の座標に変換する処理*/
+    constexpr void getuv(Complex& z, int const& i, int const& j)const
     {
-        samples = 100;
-        length = 2;
-        centorpos = Vec2(0, 0);
-        r = 1;
+        z.re = centerpos.re  +  length*0.5*(2*i - image.width) / image.width;
+        z.im = centerpos.im  -  length*0.5*(2*j - image.height) / image.width;
     }
 
     /*マンデルブロ集合とジュリア集合では初期値が異なるのでinitという仮想関数を定義*/
-    virtual void init(Complex&, Complex&, int const&, int const&) const = 0;
+    virtual void init(Complex& z_, Complex& c_, int const& i, int const& j) const = 0;
 
-
-    public:
-
-    /*画素の座標を複素平面上の座標に変換する処理*/
-    constexpr void getuv(double& u, double& v, int const& i, int const& j)const
-    {
-        u = centorpos.x  +  length*(2*i - image.width) / image.width;
-        v = centorpos.y  -  length*(2*j - image.height) / image.width;
-    }
-
-    /*マンデルブロ集合やジュリア集合を拡大・縮小・平行移動させるための処理*/
-    void changesetting()
-    {
-        std::cout << "中心位置: "  << std::setprecision(15) << centorpos << std::endl;
-        std::cout << "画像の横幅: " << length << "の2倍" << std::endl;
-
-        double k = input<double>("何倍したいか入力してください。");
-        length /= k;
-
-        double rx = input<double>("横幅の何倍移動したいか入力してください。");
-        centorpos.x += 2 * length * rx;
-        double ry = input<double>("縦幅の何倍移動したいか入力してください。");
-        centorpos.y += 2.0 * image.height/image.width * length * ry;   
-
-        r = input<double>("カラー表示の比率を何倍にしたいか入力してください。");
-
-        samples = input<int>("サンプル数を入力してください。");
-    }
- 
     RGB whatcolor(int const& i, int const& j) const
     {
         /*マンデルブロ集合とジュリア集合では初期値が異なるのでinitという仮想関数を定義*/
@@ -848,7 +857,7 @@ class MJ : public Pattern
         /*diverge: 発散すればtrue,    num: 発散が判定されるまでの回数*/
         int num;
         bool diverge = false;
-        for (num = 0; num < samples; ++num) 
+        for (num = 0; num < max_depth; ++num) 
         {
             z = z*z + c;
             /*絶対値が2を超えると発散することが知られている*/
@@ -863,10 +872,29 @@ class MJ : public Pattern
         if(diverge)
         {
             static Rainbow rainbow;
-            return rainbow[(int)(255*(r*num/(double)samples))];
+            return rainbow[(int)(255*(r*num/(double)max_depth))];
         }
         else
             return {0,0,0};
+    }
+
+    /*マンデルブロ集合やジュリア集合を拡大・縮小・平行移動させるための処理*/
+    void changesetting()
+    {
+        std::cout << "中心位置: "  << std::setprecision(15) << centerpos << std::endl;
+        std::cout << "画像の横幅: " << length << "の2倍" << std::endl;
+
+        double rx = input<double>("横幅の何倍移動したいか入力してください。");
+        centerpos.re += 2 * length * rx;
+        double ry = input<double>("縦幅の何倍移動したいか入力してください。");
+        centerpos.im += 2.0 * image.height/image.width * length * ry;   
+
+        double k = input<double>("何倍したいか入力してください。");
+        length /= k;
+
+        r = input<double>("カラー表示の比率を何倍にしたいか入力してください。");
+
+        max_depth = input<int>("サンプル数を入力してください。");
     }
 };
 
@@ -881,7 +909,7 @@ class Mandel : public MJ
     {
         /*マンデルブロ集合ではzの初期値は0で、cは座標から求める*/
         z_ = Complex(0, 0);
-        getuv(c_.re, c_.im, i, j);
+        getuv(c_, i, j);
     }
 };
 
@@ -892,23 +920,20 @@ class Julia : public MJ
     /*cはメンバ*/
     Complex const c;
 
-    Julia(Image& image_, Complex const& c_): MJ(image_), c(c_){}
-    Julia(Image& image_): Julia(image_, input<Complex>("複素数を空白区切りで入力してください。")){}
-    
+    Julia(Image& image_): MJ(image_), c(input<Complex>("cの値を入力してください。")){}
 
     /*initという仮想関数の実体(ジュリア集合用)をここに書く*/
     void init(Complex& z_, Complex& c_, int const& i, int const& j) const
     {
         /*ジュリア集合ではzの初期値は位置から求め、cは任意*/
-        getuv(z_.re, z_.im, i, j);
+        getuv(z_, i, j);
         c_ = c;//メンバの値をc_に渡す
     }
 };
 
-
 ////////////////////////////////////////////////////////////////
 /*ABC(クラス名)を空白区切りで書く*/
-#define CLASSLIST ABC(Uniform) ABC(Sima) ABC(Wave) ABC(RuleN) ABC(CircWave) ABC(GuruGuru_normal) ABC(GuruGuru_EX) ABC(Polar_rainbow) ABC(Mandel) ABC(Julia)
+#define CLASSLIST ABC(Uniform) ABC(Stripe) ABC(Wave) ABC(RuleN) ABC(CircWave) ABC(GuruGuru_normal) ABC(GuruGuru_EX) ABC(Polar_rainbow) ABC(Mandel) ABC(Julia)
 
 #define ABC(a) a,
 typedef enum class enm1
@@ -927,7 +952,7 @@ static const std::string patterns[(int)PATTERNS::NUMBER] = {CLASSLIST};
 
 Pattern......................画素を書き込む処理を統一(子クラスでは座標から色を求める関数を実装するだけでいい)
     ┣━Uniform 
-    ┣━Sima        
+    ┣━Stripe        
     ┣━Wave
     ┣━RuleN
     ┣━CircWave   
@@ -973,17 +998,18 @@ std::shared_ptr <Pattern> setpattern(Image& image)
     }
 }
 
+/*magnification倍されたfrom画像をto画像に貼り付ける*/ /*from画像をto画像に貼り付けるとfrom画像の(0, 0)がto画像の(x_begin, y_begin)に重なる*/
 constexpr void superimpose(Image const& from, Image& to, int const& x_begin, int const& y_begin, double const& magnification)
 {
-    int x_end = x_begin + magnification * to.width;
-    int y_end = y_begin + magnification * to.height;
+    int x_end = x_begin + magnification * from.width;
+    int y_end = y_begin + magnification * from.height;
 
     for(int j = y_begin; j<y_end; j++)
     for(int i = x_begin; i<x_end; i++)
     {
         int x_from = (i - x_begin)/magnification;
         int y_from = (j - y_begin)/magnification;
-        to.setpixel(i, j, from.getpixel(x_from, y_from));
+       to.setpixel(i, j, from.getpixel(x_from, y_from));
     }
 }
 
@@ -996,11 +1022,13 @@ int main()
 
         int width = input<int>("横幅を入力してください。");
         int height = input<int>("縦幅を入力してください。");
+        std::cout << "(縦, 横)は(" << width << ", " << height <<  ")になりました。" << std::endl;
         Image image(width, height);
         std::shared_ptr <Pattern> pat = setpattern(image);
 
         while(1)
-        {  
+        {   
+            std::cout << "画像を計算します。しばらくお待ちください。" << std::endl;
             pat->writecolor();
             image.output();
             which = input<bool>("同じ種類の画像を出力し直す場合は1を、やめる場合は0を入力してください。");
